@@ -1,11 +1,17 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, CallbackWithoutResultAndOptionalError } from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { User as IUser, Address, UserPreferences } from '../../../shared/types';
+import { User as IUser, Address, UserPreferences } from '@/shared/types';
 
-// Extend the User interface to include Document methods
+// Extend the User interface to include Document methods and additional fields
 export interface UserDocument extends Omit<IUser, '_id'>, Document {
   comparePassword(candidatePassword: string): Promise<boolean>;
   getRecommendationData(): any;
+  password: string; // Added to match schema
+  emailVerificationToken?: string; // Added to match schema
+  passwordResetToken?: string; // Added to match schema
+  passwordResetExpires?: Date; // Added to match schema
+  lastLogin?: Date; // Added to match schema
+  isActive: boolean; // Added to match schema
 }
 
 const addressSchema = new Schema<Address>({
@@ -123,12 +129,12 @@ userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
 
 // Virtual for full name
-userSchema.virtual('fullName').get(function() {
+userSchema.virtual('fullName').get(function(this: UserDocument) {
   return `${this.firstName} ${this.lastName}`;
 });
 
 // Pre-save middleware to hash password
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function(this: UserDocument, next: CallbackWithoutResultAndOptionalError) {
   // Only hash password if it's been modified (or new)
   if (!this.isModified('password')) return next();
 
@@ -143,7 +149,7 @@ userSchema.pre('save', async function(next) {
 });
 
 // Instance method to compare password
-userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
+userSchema.methods.comparePassword = async function(this: UserDocument, candidatePassword: string): Promise<boolean> {
   try {
     return await bcrypt.compare(candidatePassword, this.password);
   } catch (error) {
@@ -152,7 +158,7 @@ userSchema.methods.comparePassword = async function(candidatePassword: string): 
 };
 
 // Instance method to get recommendation data
-userSchema.methods.getRecommendationData = function() {
+userSchema.methods.getRecommendationData = function(this: UserDocument) {
   return {
     preferences: this.preferences,
     orderHistory: this.orderHistory,
@@ -161,17 +167,17 @@ userSchema.methods.getRecommendationData = function() {
 };
 
 // Static method to find active users
-userSchema.statics.findActive = function() {
+userSchema.statics.findActive = function(this: mongoose.Model<UserDocument>) {
   return this.find({ isActive: true });
 };
 
 // Static method to find by email
-userSchema.statics.findByEmail = function(email: string) {
+userSchema.statics.findByEmail = function(this: mongoose.Model<UserDocument>, email: string) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
-// Pre-remove middleware to cleanup related data
-userSchema.pre('remove', async function(next) {
+// Pre-deleteOne middleware to cleanup related data
+userSchema.pre('deleteOne', { document: true, query: false }, async function(this: UserDocument, next: CallbackWithoutResultAndOptionalError) {
   try {
     // Remove user's orders, reviews, etc.
     await mongoose.model('Order').deleteMany({ user: this._id });
