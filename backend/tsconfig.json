@@ -4,7 +4,6 @@
       "module": "commonjs",
       "lib": ["ES2020"],
       "outDir": "./dist",
-      "rootDir": "./src",
       "strict": true,
       "esModuleInterop": true,
       "skipLibCheck": true,
@@ -30,14 +29,17 @@
         "@/routes/*": ["src/routes/*"],
         "@/services/*": ["src/services/*"],
         "@/utils/*": ["src/utils/*"],
-        "@/types/*": ["src/types/*"]
+        "@/types/*": ["src/types/*"],
+        "@/shared/*": ["../shared/*"]
       },
       "allowSyntheticDefaultImports": true,
       "experimentalDecorators": true,
-      "emitDecoratorMetadata": true
+      "emitDecoratorMetadata": true,
+      "types": ["node", "mongoose"]
     },
     "include": [
-      "src/**/*"
+      "src/**/*",
+      "../shared/**/*"
     ],
     "exclude": [
       "node_modules",
